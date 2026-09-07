@@ -36,12 +36,13 @@ jobs:
     - name: Install VS ATL Component
       shell: pwsh
       run: |
+        $bootstrapper = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+        if (-not (Test-Path $bootstrapper)) { Write-Error "VS bootstrapper not found: $bootstrapper"; exit 1 }
         $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
         $vsPath = & $vswhere -latest -property installationPath
         if (-not $vsPath) { Write-Error "VS not found"; exit 1 }
         Write-Host "VS path: $vsPath"
-        $setup = Join-Path $vsPath "Installer\setup.exe"
-        & $setup modify --installPath $vsPath --quiet --norestart --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended
+        & $bootstrapper modify --installPath $vsPath --quiet --norestart --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended
         if ($LASTEXITCODE -ne 0) { Write-Error "ATL install failed ($LASTEXITCODE)"; exit $LASTEXITCODE }
         Write-Host "ATL component installed"
 
