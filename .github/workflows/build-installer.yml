@@ -34,10 +34,10 @@ jobs:
       run: nuget restore Rectify11Installer.sln
 
     - name: Build Phase2
-      run: msbuild Rectify11.Phase2\Rectify11.Phase2.csproj /p:Configuration=Release /p:platform=x64
+      run: msbuild Rectify11.Phase2\Rectify11.Phase2.csproj /p:Configuration=Release /p:platform=x64 /p:SolutionDir=${{ github.workspace }}\
 
     - name: Build Installer
-      run: msbuild Rectify11Installer\Rectify11Installer.csproj /p:Configuration=Release /p:platform=x64
+      run: msbuild Rectify11Installer\Rectify11Installer.csproj /p:Configuration=Release /p:platform=x64 /p:SolutionDir=${{ github.workspace }}\
 
     - name: Publish
       run: dotnet publish Rectify11Installer -c Release -p:PublishProfile=FolderProfile -property:SolutionDir=${{ github.workspace }}\
