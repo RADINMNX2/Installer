@@ -33,6 +33,18 @@ jobs:
     - name: Restore NuGet Packages
       run: nuget restore Rectify11Installer.sln
 
+    - name: Install VS ATL Component
+      shell: pwsh
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsPath = & $vswhere -latest -property installationPath
+        if (-not $vsPath) { Write-Error "VS not found"; exit 1 }
+        Write-Host "VS path: $vsPath"
+        $setup = Join-Path $vsPath "Installer\setup.exe"
+        & $setup modify --installPath $vsPath --quiet --norestart --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended
+        if ($LASTEXITCODE -ne 0) { Write-Error "ATL install failed ($LASTEXITCODE)"; exit $LASTEXITCODE }
+        Write-Host "ATL component installed"
+
     - name: Build
       run: msbuild Rectify11Installer.sln /p:Configuration=Release /p:platform=x64
 
