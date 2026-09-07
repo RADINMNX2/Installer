@@ -33,31 +33,27 @@ jobs:
     - name: Restore NuGet Packages
       run: nuget restore Rectify11Installer.sln
 
-    - name: Install VS ATL Component
-      shell: pwsh
-      run: |
-        $bootstrapper = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
-        if (-not (Test-Path $bootstrapper)) { Write-Error "VS bootstrapper not found: $bootstrapper"; exit 1 }
-        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-        $vsPath = & $vswhere -latest -property installationPath
-        if (-not $vsPath) { Write-Error "VS not found"; exit 1 }
-        Write-Host "VS path: $vsPath"
-        & $bootstrapper modify --installPath $vsPath --quiet --norestart --add Microsoft.VisualStudio.Component.VC.ATL --add Microsoft.VisualStudio.Component.VC.ATLMFC --includeRecommended
-        if ($LASTEXITCODE -ne 0) { Write-Error "ATL install failed ($LASTEXITCODE)"; exit $LASTEXITCODE }
-        Write-Host "ATL component installed"
+    - name: Build Phase2
+      run: msbuild Rectify11.Phase2\Rectify11.Phase2.csproj /p:Configuration=Release /p:platform=x64
 
-    - name: Build
-      run: msbuild Rectify11Installer.sln /p:Configuration=Release /p:platform=x64
+    - name: Build Installer
+      run: msbuild Rectify11Installer\Rectify11Installer.csproj /p:Configuration=Release /p:platform=x64
 
     - name: Publish
       run: dotnet publish Rectify11Installer -c Release -p:PublishProfile=FolderProfile -property:SolutionDir=${{ github.workspace }}\
 
-    - name: Upload Rectify11Installer artifact
-      uses: actions/upload-artifact@v4.3.3
-      with:
-        name: Rectify11Installer
-        path: Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64\
-        compression-level: 0
+    - name: Verify output
+      shell: pwsh
+      run: |
+        $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
+        if (Test-Path $dir) { Get-ChildItem -Recurse $dir -File | Select-Object -ExpandProperty Name | Select-Object -First 40 } else { Write-Error "No publish dir"; exit 1 }
+
+    - name: Compress publish folder
+      shell: pwsh
+      run: |
+        $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
+        Compress-Archive -Path "$dir\*" -DestinationPath "$dir\Rectify11Installer.zip" -CompressionLevel Optimal
+        Get-Item "$dir\Rectify11Installer.zip" | Select-Object Name, Length
 
     - name: Create Release
       shell: pwsh
@@ -65,7 +61,6 @@ jobs:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
-        Get-ChildItem -Recurse $dir | Select-Object FullName, Length
         $files = @(Get-ChildItem -Recurse $dir -File | Select-Object -ExpandProperty FullName)
         if ($files.Count -eq 0) { Write-Error "No publish output found"; exit 1 }
         $tag = "v1.0.0-$env:GITHUB_RUN_ID"
