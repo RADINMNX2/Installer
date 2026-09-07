@@ -1,0 +1,56 @@
+name: Build Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      NUGET_CERT_REVOCATION_MODE: offline
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4.1.6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        submodules: recursive
+        lfs: true
+
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v2
+      with:
+        msbuild-architecture: x64
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4.0.0
+      with:
+        dotnet-version: "8"
+
+    - name: Restore NuGet Packages
+      run: nuget restore Rectify11Installer.sln
+
+    - name: Build
+      run: msbuild Rectify11Installer.sln /p:Configuration=Release /p:platform=x64
+
+    - name: Publish
+      run: dotnet publish Rectify11Installer -c Release -p:PublishProfile=FolderProfile -property:SolutionDir=${{ github.workspace }}\
+
+    - name: Upload Rectify11Installer artifact
+      uses: actions/upload-artifact@v4.3.3
+      with:
+        name: Rectify11Installer
+        path: Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64\
+        compression-level: 0
+
+    - name: Create Release
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
+        Get-ChildItem -Recurse $dir | Select-Object FullName, Length
+        $files = @(Get-ChildItem -Recurse $dir -File | Select-Object -ExpandProperty FullName)
+        if ($files.Count -eq 0) { Write-Error "No publish output found"; exit 1 }
+        $tag = "v1.0.0-$env:GITHUB_RUN_ID"
+        gh release create "$tag" --title "Rectify11 Installer build $env:GITHUB_RUN_ID" --notes "Automated build from run $env:GITHUB_RUN_ID." @files
