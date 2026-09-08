@@ -6,6 +6,9 @@ on:
     branches:
       - legacy-installer
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-2022
@@ -58,3 +61,15 @@ jobs:
         name: Rectify11Installer-x64
         path: Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64\
         compression-level: 0
+
+    - name: Create GitHub Release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: v1.0.0-${{ github.run_id }}
+      shell: pwsh
+      run: |
+        $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
+        $zip = Join-Path $dir "Rectify11Installer.zip"
+        if (-not (Test-Path $zip)) { Write-Error "zip not found"; exit 1 }
+        $release = gh release create $env:TAG "$zip" --repo ${{ github.repository }} --title "Rectify11 Installer build ${{ github.run_id }}" --notes "Automated build of Rectify11 Installer." --latest
+        Write-Host "Release created: $release"
