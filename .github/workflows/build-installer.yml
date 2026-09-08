@@ -52,13 +52,9 @@ jobs:
         Compress-Archive -Path "$dir\*" -DestinationPath "$dir\Rectify11Installer.zip" -CompressionLevel Optimal
         Get-Item "$dir\Rectify11Installer.zip" | Select-Object Name, Length
 
-    - name: Create Release
-      shell: pwsh
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        $dir = "Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64"
-        $files = @(Get-ChildItem -Recurse $dir -File | Select-Object -ExpandProperty FullName)
-        if ($files.Count -eq 0) { Write-Error "No publish output found"; exit 1 }
-        $tag = "v1.0.0-$env:GITHUB_RUN_ID"
-        gh release create "$tag" --title "Rectify11 Installer build $env:GITHUB_RUN_ID" --notes "Automated build from run $env:GITHUB_RUN_ID." @files
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4.3.3
+      with:
+        name: Rectify11Installer-x64
+        path: Rectify11Installer\bin\Release\net8.0-windows\publish\win-x64\
+        compression-level: 0
